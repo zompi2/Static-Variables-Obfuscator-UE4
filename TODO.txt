@@ -1,0 +1,4 @@
+* Write proper readme
+* Optimize some of the functions with passing by const ref
+* Better comments
+* Provide some tutorial materials
