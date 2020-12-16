@@ -1,183 +1,143 @@
 #pragma once
 
+/**
+ * This is the core of the obfuscator. 
+ * To obfuscate a static data declare it as in example: TVarOb<int32>.
+ */
+
 #include "CoreMinimal.h"
+#include "VarObChunk.h"
 #include "VarObDelegates.h"
-#include "VarObTraits.h"
+#include "VarObSupportedTypes.h"
 
 #define VO_VAL 0
 #define VO_KEY 1
 #define VO_CHK 2
 
-template<int N>
-struct ChunkN
-{
-	uint32 Data[N];
-
-	ChunkN<N> operator^(const ChunkN<N>& Rhs)
-	{
-		ChunkN<N> tmp;
-		for (int i = 0; i < N; i++)
-		{
-			tmp.Data[i] = Data[i] ^ Rhs.Data[i];
-		}
-		return tmp;
-	}
-
-	ChunkN<N> operator^(const int32& Rhs)
-	{
-		ChunkN<N> tmp;
-		for (int i = 0; i < N; i++)
-		{
-			tmp.Data[i] = Data[i] ^ Rhs;
-		}
-		return tmp;
-	}
-
-	ChunkN<N>& operator^=(const ChunkN<N>& Rhs)
-	{
-		for (int i = 0; i < N; i++)
-		{
-			Data[i] ^= Rhs.Data[i];
-		}
-		return *this;
-	}
-
-	bool operator==(const ChunkN<N>& Rhs)
-	{
-		for (int i = 0; i < N; i++)
-		{
-			if (Data[i] != Rhs.Data[i])
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-
-	void GenRand()
-	{
-		for (int i = 0; i < N; i++)
-		{
-			Data[i] = static_cast<uint32>(FMath::RandHelper(0x7fff));
-		}
-	}
-};
-
 template<typename T>
-class TVarOb
+struct TVarOb
 {
-private:
+    using FChunkX = FChunkN<(sizeof(T)-1)/4+1>;
+    FChunkX Data[3] = {};
 
-	using ChunkX = ChunkN<(sizeof(T)-1)/4+1>;
-	ChunkX Data[3] = {};
+    inline void MemMangle()
+    {
+        if (uint8* DataPtr = reinterpret_cast<uint8*>(Data))
+        {
+            for (uint8 I = 0; I < sizeof(FChunkX) * 3; I += 3)
+            {
+                uint8 Tmp = DataPtr[I];
+                DataPtr[I] = DataPtr[I + 2];
+                DataPtr[I + 2] = Tmp;
+            }
+        }
+    }
 
-	inline void MemMangle()
-	{
-		uint8* DataPtr = reinterpret_cast<uint8*>(Data);
-		for (uint8 I = 0; I < sizeof(ChunkX) * 3; I += 3)
-		{
-			uint8 Tmp = DataPtr[I];
-			DataPtr[I] = DataPtr[I + 2];
-			DataPtr[I + 2] = Tmp;
-		}
-	}
+    inline void Check(bool bCondition)
+    {
+        if (bCondition == false)
+        {
+            FVarObDelegates::OnVariableCheatDetected.Broadcast();
+        }
+    }
 
-	inline void Check(bool bCondition)
-	{
-		if (bCondition == false)
-		{
-			FVarObDelegates::OnVariableCheatDetected.Broadcast();
-		}
-	}
+    TVarOb(T V = T())
+    {
+        static_assert(TVarObSupportedType<T>::Value, "Unsupported Type");
 
-public:
+        Data[VO_KEY].GenRand();
+        Data[VO_VAL] = *(FChunkX*)&V;
+        Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);
 
-	
-	TVarOb(T v = 0)
-	{
-		static_assert(TVarObSupportedType<T>::Value, "Unsupported Type");
+        Data[VO_VAL] ^= Data[VO_KEY];
+        MemMangle();
+    }
 
-		Data[VO_KEY].GenRand();
-		Data[VO_VAL] = *(ChunkX*)&v;
-		Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);
+    TVarOb(TVarOb& V)
+    {
+        FMemory::Memcpy(Data, V.Data, sizeof(FChunkX) * 3);
+    }
 
-		Data[VO_VAL] ^= Data[VO_KEY];
-		MemMangle();
-	}
+    TVarOb& operator=(T& V)
+    {
+        static_assert(TVarObSupportedType<T>::Value, "Unsupported Type");
 
-	TVarOb(TVarOb& v)
-	{
-		FMemory::Memcpy(Data, v.Data, sizeof(ChunkX) * 3);
-	}
+        Data[VO_KEY].GenRand();
+        Data[VO_VAL] = *(FChunkX*)&V;
+        Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);
 
-	TVarOb& operator=(T& v)
-	{
-		static_assert(TVarObSupportedType<T>::Value, "Unsupported Type");
+        Data[VO_VAL] ^= Data[VO_KEY];
+        MemMangle();
 
-		Data[VO_KEY].GenRand();
-		Data[VO_VAL] = *(ChunkX*)&v;
-		Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);
+        return *this;
+    }
 
-		Data[VO_VAL] ^= Data[VO_KEY];
-		MemMangle();
+    operator T()
+    {
+        MemMangle();
+        FChunkX Tmp = Data[VO_VAL] ^ Data[VO_KEY];
+        Check(Tmp == (Data[VO_CHK] ^ VO_MASK));
+        MemMangle();
+        return *(T*)&Tmp;
+    }
 
-		return *this;
-	}
+    void ToArray(TArray<uint8>& OutData)
+    {
+        OutData.SetNum(sizeof(FChunkX) * 3);
+        FMemory::Memcpy(OutData.GetData(), Data, sizeof(FChunkX) * 3);
+    }
 
-	operator T()
-	{
-		MemMangle();
-		ChunkX Tmp = Data[VO_VAL] ^ Data[VO_KEY];
-		Check(Tmp == (Data[VO_CHK] ^ VO_MASK));
-		MemMangle();
-		return *(T*)&Tmp;
-	}
+    void FromArray(const TArray<uint8>& InData)
+    {
+        checkf(InData.Num() == sizeof(FChunkX) * 3, TEXT("Bad size of imported array (expected %i bytes but received %i bytes"), sizeof(FChunkX) * 3, InData.Num());
+        FMemory::Memcpy(Data, InData.GetData(), sizeof(FChunkX) * 3);
+    }
 
-#define VO_BINARY_OP(_op)	TVarOb& operator _op (const T& Rhs)							\
-							{															\
-								MemMangle();											\
-								ChunkX Tmp = Data[VO_VAL] ^ Data[VO_KEY];				\
-								Check(Tmp == (Data[VO_CHK] ^ VO_MASK));					\
-								T Res = *(T*)&Tmp;										\
-								Res _op Rhs;											\
-								Data[VO_KEY].GenRand();									\
-								Data[VO_VAL] = *(ChunkX*)&Res;							\
-								Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);				\
-								Data[VO_VAL] ^= Data[VO_KEY];							\
-								MemMangle();											\
-								return *this;											\
-							}															\
+#define VO_BINARY_OP(_op)   TVarOb& operator _op (const T& Rhs)                         \
+                            {                                                           \
+                                MemMangle();                                            \
+                                FChunkX Tmp = Data[VO_VAL] ^ Data[VO_KEY];              \
+                                Check(Tmp == (Data[VO_CHK] ^ VO_MASK));                 \
+                                T Res = *(T*)&Tmp;                                      \
+                                Res _op Rhs;                                            \
+                                Data[VO_KEY].GenRand();                                 \
+                                Data[VO_VAL] = *(FChunkX*)&Res;                         \
+                                Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);                \
+                                Data[VO_VAL] ^= Data[VO_KEY];                           \
+                                MemMangle();                                            \
+                                return *this;                                           \
+                            }                                                           \
 
-#define VO_UNARY_OP(_op)	TVarOb& operator _op ()										\
-							{															\
-								MemMangle();											\
-								ChunkX Tmp = Data[VO_VAL] ^ Data[VO_KEY];				\
-								Check(Tmp == (Data[VO_CHK] ^ VO_MASK));					\
-								T v = *(T*)&Tmp;										\
-								v _op;													\
-								Data[VO_KEY].GenRand();									\
-								Data[VO_VAL] = *(ChunkX*)&v;							\
-								Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);				\
-								Data[VO_VAL] ^= Data[VO_KEY];							\
-								MemMangle();											\
-								return *this;											\
-							}															\
-							TVarOb operator _op (int)									\
-							{															\
-								TVarOb Tmp(*this);										\
-								operator _op();											\
-								return Tmp;												\
-							}															\
+#define VO_UNARY_OP(_op)    TVarOb& operator _op ()                                     \
+                            {                                                           \
+                                MemMangle();                                            \
+                                FChunkX Tmp = Data[VO_VAL] ^ Data[VO_KEY];              \
+                                Check(Tmp == (Data[VO_CHK] ^ VO_MASK));                 \
+                                T V = *(T*)&Tmp;                                        \
+                                v _op;                                                  \
+                                Data[VO_KEY].GenRand();                                 \
+                                Data[VO_VAL] = *(FChunkX*)&V;                           \
+                                Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);                \
+                                Data[VO_VAL] ^= Data[VO_KEY];                           \
+                                MemMangle();                                            \
+                                return *this;                                           \
+                            }                                                           \
+                            TVarOb operator _op (int)                                   \
+                            {                                                           \
+                                TVarOb Tmp(*this);                                      \
+                                operator _op();                                         \
+                                return Tmp;                                             \
+                            }                                                           \
 
-	VO_BINARY_OP(*=)
-	VO_BINARY_OP(/=)
-	VO_BINARY_OP(%=)
-	VO_BINARY_OP(-=)
-	VO_BINARY_OP(+=)
-	VO_BINARY_OP(^=)
-	VO_BINARY_OP(<<)
-	VO_BINARY_OP(>>)
+    VO_BINARY_OP(*=)
+    VO_BINARY_OP(/=)
+    VO_BINARY_OP(%=)
+    VO_BINARY_OP(-=)
+    VO_BINARY_OP(+=)
+    VO_BINARY_OP(^=)
+    VO_BINARY_OP(<<)
+    VO_BINARY_OP(>>)
 
-	VO_UNARY_OP(++)
-	VO_UNARY_OP(--)
+    VO_UNARY_OP(++)
+    VO_UNARY_OP(--)
 };

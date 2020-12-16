@@ -3,25 +3,25 @@
 #include "CoreMinimal.h"
 #include "VarOb.h"
 #include "VarObDoOnce.h"
-#include "ObfusInt32.generated.h"
+#include "ObfusQuat.generated.h"
 
 USTRUCT(BlueprintType, Category = "Variable Obfuscator")
-struct FObfusInt32
+struct FObfusQuat
 {
 	GENERATED_BODY()
 
 public:
 
 	UPROPERTY(EditAnywhere)
-	int32 InitVal;
+	FQuat InitVal;
 
-	int32 GetVal()
+	FQuat GetVal()
 	{
 		DoOnce.Do([this]() { Val = InitVal; });
 		return Val;
 	}
 
-	void SetVal(int32 NewVal)
+	void SetVal(FQuat NewVal)
 	{
 		DoOnce.DoEmpty();
 		Val = NewVal;
@@ -39,6 +39,6 @@ public:
 
 private:
 
-	TVarOb<int32> Val;
+	TVarOb<FQuat> Val;
 	FVarObDoOnce DoOnce;
 };

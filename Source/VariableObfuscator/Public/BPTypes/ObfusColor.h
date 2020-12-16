@@ -3,25 +3,25 @@
 #include "CoreMinimal.h"
 #include "VarOb.h"
 #include "VarObDoOnce.h"
-#include "ObfusInt32.generated.h"
+#include "ObfusColor.generated.h"
 
 USTRUCT(BlueprintType, Category = "Variable Obfuscator")
-struct FObfusInt32
+struct FObfusColor
 {
 	GENERATED_BODY()
 
 public:
 
 	UPROPERTY(EditAnywhere)
-	int32 InitVal;
+	FColor InitVal;
 
-	int32 GetVal()
+	FColor GetVal()
 	{
 		DoOnce.Do([this]() { Val = InitVal; });
 		return Val;
 	}
 
-	void SetVal(int32 NewVal)
+	void SetVal(FColor NewVal)
 	{
 		DoOnce.DoEmpty();
 		Val = NewVal;
@@ -39,6 +39,6 @@ public:
 
 private:
 
-	TVarOb<int32> Val;
+	TVarOb<FColor> Val;
 	FVarObDoOnce DoOnce;
 };

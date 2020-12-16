@@ -1,8 +1,12 @@
 #pragma once
 
+/**
+ * Small, helper struct to ensue the function will perform only once.
+ */
+
 #include "CoreMinimal.h"
 
-struct FObfusDoOnce
+struct FVarObDoOnce
 {
 
 public:
