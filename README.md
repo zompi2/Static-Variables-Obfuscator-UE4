@@ -52,6 +52,15 @@ Currently it supports all arithmetic types and the following structures:
 
 Theoretically it should work with any struct that doesn't contain dynamic variables (pointers, strings, arrays, etc). However it implements a check to ensure only verified structures are used. If You want to You can add a proper trait check to the `VarObSupportedTypes.h`.
 
+## Serialization
+
+You can serialize obfuscated variable into a file so it will be obfuscated in file as well! In order to do this `TVarOb` can be imported and exported to an array of bytes using the following methods:
+``` cpp
+void ToArray(TArray<uint8>& OutData);
+void FromArray(const TArray<uint8>& InData);
+```
+These arrays can be saved and load using the serialization method of Your choice.
+
 ## Blueprints
 
 This plugin works the best with code but there are some structures and functions that allows to use it with Blueprint too. For more details check `VarObBPLib.h` file.
