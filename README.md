@@ -64,3 +64,8 @@ These arrays can be saved and load using the serialization method of Your choice
 ## Blueprints
 
 This plugin works the best with code but there are some structures and functions that allows to use it with Blueprint too. For more details check `VarObBPLib.h` file.
+
+## More
+
+Unreal Engine forum page: https://forums.unrealengine.com/community/community-content-tools-and-tutorials/1844271-plugin-static-variables-obfuscator-ue4
+
