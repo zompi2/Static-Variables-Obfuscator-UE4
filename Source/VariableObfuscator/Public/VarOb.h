@@ -15,9 +15,12 @@
 #define VO_CHK 2
 
 template<typename T>
-struct TVarOb
+class TVarOb
 {
     using FChunkX = FChunkN<(sizeof(T)-1)/4+1>;
+
+private:
+
     FChunkX Data[3] = {};
 
     inline void MemMangle()
@@ -40,6 +43,8 @@ struct TVarOb
             FVarObDelegates::OnVariableCheatDetected.Broadcast();
         }
     }
+
+public:
 
     TVarOb(T V = T())
     {

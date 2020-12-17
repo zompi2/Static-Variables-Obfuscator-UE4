@@ -6,7 +6,7 @@
 
 #include "CoreMinimal.h"
 
-struct FVarObDoOnce
+class FVarObDoOnce
 {
 
 public:
