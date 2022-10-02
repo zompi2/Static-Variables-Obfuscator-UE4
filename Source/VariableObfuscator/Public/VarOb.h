@@ -119,7 +119,7 @@ public:
                                 FChunkX Tmp = Data[VO_VAL] ^ Data[VO_KEY];              \
                                 Check(Tmp == (Data[VO_CHK] ^ VO_MASK));                 \
                                 T V = *(T*)&Tmp;                                        \
-                                v _op;                                                  \
+                                V _op;                                                  \
                                 Data[VO_KEY].GenRand();                                 \
                                 Data[VO_VAL] = *(FChunkX*)&V;                           \
                                 Data[VO_CHK] = (Data[VO_VAL] ^ VO_MASK);                \
